@@ -1,0 +1,26 @@
+profile: samd_pccp_optin
+version: "0.1"
+description: >
+  Isolated opt-in verification crosswalk for manufacturers of FDA-regulated AI-enabled Device
+  Software Functions (AI-DSFs) maintaining an FDA-authorized Predetermined Change Control Plan
+  (PCCP). Do not use this profile for non-device administrative or care-navigation software.
+regulatory_notice: >
+  Opt-in manufacturer documentation helper only. Does not constitute FDA clearance, authorization,
+  or Regulatory Science Tool listing. Manufacturer retains sole responsibility for 510(k)/De Novo/PMA
+  submissions and 21 CFR Part 820 (QMSR) design-change controls.
+crosswalk:
+  fda_pccp_modification_protocol: "Data management, re-verification protocol, and update acceptance criteria"
+  fda_pccp_impact_assessment: "Subgroup risk deltas, cumulative anchor drift vs. cleared A0, and rollback triggers"
+  qmsr_21cfr820: "Design-change verification records and cryptographic configuration hashes"
+thresholds:
+  alpha_safety: 0.025
+  alpha_quality_fdr: 0.05
+  gate0_max_critical_failures: 0
+  max_gross_flip_upper: 0.020
+  max_routine_false_escalation_delta: 0.050
+  max_churn_upper: 0.025
+  net_quality_ni_margin: -0.015
+  anchor_max_drift: 0.030
+  judge_cal_equivalence_margin: 0.015
+  upstream_drift_notify_business_days: 3
+  upstream_drift_remediate_business_days: 5

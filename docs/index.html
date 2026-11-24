@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>clindiff — Exact Finite-Sample Change-Control Calculator for Clinical AI</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --ink: #111111;
+      --muted: #555555;
+      --rule: #cccccc;
+      --shade: #f4f4f4;
+      --accent: #000000;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 28px 18px 56px;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      line-height: 1.48;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; }
+    header { border-bottom: 2px solid var(--ink); padding-bottom: 14px; margin-bottom: 22px; }
+    h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: -0.01em; }
+    .sub { color: var(--muted); margin: 0 0 10px; font-size: 13.5px; }
+    .links a {
+      color: var(--ink); text-decoration: underline; margin-right: 16px; font-weight: bold; font-size: 13px;
+    }
+    h2 { font-size: 15.5px; margin: 26px 0 10px; border-bottom: 1px solid var(--rule); padding-bottom: 4px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 14px; }
+    label { display: block; font-weight: bold; font-size: 12px; margin-bottom: 4px; }
+    input, select {
+      width: 100%; padding: 7px 9px; border: 1px solid var(--ink); background: #fff;
+      font-family: inherit; font-size: 13.5px; color: var(--ink);
+    }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); gap: 10px; margin: 14px 0; }
+    .card { border: 1px solid var(--ink); background: var(--shade); padding: 11px 12px; }
+    .card .k { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+    .card .v { font-size: 21px; font-weight: bold; margin-top: 3px; }
+    .card .d { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .warn {
+      border-left: 4px solid var(--ink); background: var(--shade); padding: 10px 12px; margin: 12px 0; font-size: 13px;
+    }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12.8px; }
+    th, td { border-bottom: 1px solid var(--rule); padding: 6px 8px; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    thead th { background: var(--shade); border-top: 1.5px solid var(--ink); border-bottom: 1.2px solid var(--ink); }
+    pre {
+      background: var(--shade); border: 1px solid var(--rule); padding: 12px; overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.2px; line-height: 1.45;
+      white-space: pre-wrap;
+    }
+    button {
+      background: var(--ink); color: #fff; border: none; padding: 7px 14px; font-weight: bold;
+      font-size: 12.5px; cursor: pointer; margin-top: 4px;
+    }
+    button:hover { opacity: 0.84; }
+    footer {
+      margin-top: 36px; border-top: 1px solid var(--rule); padding-top: 12px; font-size: 12px; color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>clindiff: Exact Finite-Sample Change-Control Verification for Clinical AI</h1>
+    <p class="sub">
+      Open-source, self-hosted, zero-PHI release verification for clinical language models and decision support.
+      Developed within the Waymark network (the largest integrated Medicaid population health provider nationally) with UCSF and UPenn collaborators.
+    </p>
+    <div class="links">
+      <a href="https://github.com/sanjaybasu/clindiff">GitHub Repository (Apache-2.0)</a>
+      <a href="#calculator">MVM Calculator</a>
+      <a href="#clause">RFP Procurement Clause</a>
+      <a href="#quickstart">CLI Quickstart</a>
+    </div>
+  </header>
+
+  <section id="calculator">
+    <h2>1. Interactive Exact Minimum Verifiable Margin (MVM) Calculator</h2>
+    <p>
+      Many clinical AI procurement contracts require vendors to certify &ldquo;less than 1.0% or 2.5% safety regression&rdquo; using 50-case smoke test sets.
+      This calculator runs the exact 32-point Gauss-Chebyshev Jeffreys Beta(0.5, 0.5) mixture betting supermartingale from <code>clindiff.stats</code>
+      directly in your browser to compute the tightest regression margin mathematically certifiable at your independent sample size.
+    </p>
+
+    <div class="grid">
+      <div>
+        <label for="nCases">Independent paired scenarios (C or N)</label>
+        <input id="nCases" type="number" min="10" max="50000" step="10" value="80" />
+      </div>
+      <div>
+        <label for="cadence">Release cadence (annual)</label>
+        <select id="cadence">
+          <option value="1">Single release (1x, &alpha; = 0.05)</option>
+          <option value="4">Quarterly (4x/yr, &alpha;/4)</option>
+          <option value="12">Monthly (12x/yr, &alpha;/12)</option>
+        </select>
+      </div>
+      <div>
+        <label for="bgRate">Background flip rate p_bg (%)</label>
+        <input id="bgRate" type="number" min="0" max="10" step="0.5" value="1.0" />
+      </div>
+      <div>
+        <label for="targetCap">Contract target flip cap (%)</label>
+        <input id="targetCap" type="number" min="0.5" max="20" step="0.5" value="2.5" />
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="k">Exact Zero-Error Floor (0 flips)</div>
+        <div class="v" id="outZero">—</div>
+        <div class="d">Tightest possible 95% UB if zero cases regress</div>
+      </div>
+      <div class="card">
+        <div class="k">Exact 80%-Power Margin (&Delta;_min)</div>
+        <div class="v" id="outMvm">—</div>
+        <div class="d">Exact betting margin above p_bg (no heuristics)</div>
+      </div>
+      <div class="card">
+        <div class="k">Exact Total Flip Ceiling</div>
+        <div class="v" id="outCeil">—</div>
+        <div class="d">Total upper bound U_bet(k*, N; &alpha;) at 80% power</div>
+      </div>
+      <div class="card">
+        <div class="k">Min Scenarios for Target Cap</div>
+        <div class="v" id="outMinN">—</div>
+        <div class="d">Smallest N where zero-error floor &le; target cap</div>
+      </div>
+    </div>
+
+    <div class="warn" id="powerNotice"></div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Independent scenarios (N)</th>
+          <th>Zero-error floor (pp)</th>
+          <th>Exact MVM 1x (pp)</th>
+          <th>Exact MVM 4x/yr (pp)</th>
+          <th>Exact MVM 12x/yr (pp)</th>
+        </tr>
+      </thead>
+      <tbody id="refTableBody"></tbody>
+    </table>
+    <p style="font-size:12px; color:#555;">
+      <strong>Clustering rule:</strong> If a test set translates or paraphrases <em>C</em> base scenarios into <em>S</em> languages (for example, 100 scenarios &times; 3 strata = 300 vignettes),
+      enter the independent cluster count <em>C</em> (80 safety-positive clusters), not the multiplied row count. Treating translated copies as independent shrinks upper bounds up to threefold.
+    </p>
+  </section>
+
+  <section id="clause">
+    <h2>2. Vendor-Neutral Clinical AI Change-Control Procurement Clause (Post-HTI-5 / HHS Section 1557)</h2>
+    <p>
+      Copy and adapt this self-contained clause for health system, Medicaid plan, or Alternative Payment Model (APM) AI agreements.
+      Aligned with HHS Section 1557 (45 CFR 92.210), ONC HTI-1 voluntary risk-management templates, CHAI Applied Model Cards, Joint Commission, and NCQA oversight.
+    </p>
+    <pre id="clauseText">PRE-RELEASE CHANGE-CONTROL VERIFICATION CLAUSE (ZERO-PHI / SELF-HOSTED)
+
+1. Scope of Covered Updates. Before deploying any material change to a clinical or care-navigation AI tool — including upstream model-version swaps, domain fine-tuning, system prompt edits, API token-budget or reasoning defaults, safety-filter modifications, or automated-grader changes — Vendor shall execute paired multi-run testing (R >= 3 repeats per scenario) comparing the currently deployed version (v0) against the candidate release (v1).
+
+2. Deterministic Safety Invariants (Gate 0). Candidate v1 shall exhibit zero critical failures across agreed hard clinical safety rules (prohibiting autonomous numeric medication dosing changes and requiring localized 988/911 emergency routing on acute self-harm, psychiatric crisis, and somatic red-flag prompts).
+
+3. Finite-Sample Statistical Bounds and Subgroup Parity (Gate 1). Vendor shall report (a) pinned model identifier and SHA-256 hash of prompts and API parameters, (b) exact cluster-aware anytime-valid 95% upper bound on safety-positive safe-to-unsafe downward flips (psi_down) separated from routine false-escalation shifts, (c) unbiased mean-squared case churn (theta^2), (d) language- and literacy-stratified flip rates (including English and Spanish under 45 CFR 92.210), and (e) the exact Minimum Verifiable Margin (Delta_min) achievable at the suite's independent cluster count C. Vendor shall not claim certification tighter than the mathematical zero-error floor of C.
+
+4. Clinician-Calibrated Judge Audits (Gate 2). Whenever automated language-model judges score release quality, Vendor shall calibrate judge scores against a blinded clinician audit slice (m >= 50-200 paired items) using prediction-powered inference (PPI++) and fail-closed differential bias testing (|bias| < 2.0 pp).
+
+5. Upstream Drift SLA & Regulatory Notice. Vendor shall notify Buyer within 5 business days of unannounced upstream model or parameter regressions and remediate or roll back within 10 business days. Verification outputs support internal enterprise governance and do not imply FDA clearance or medical-device status.</pre>
+    <button onclick="copyClause()">Copy Procurement Clause</button>
+    <span id="copyStatus" style="margin-left:10px; font-size:12.5px; color:#333;"></span>
+  </section>
+
+  <section id="quickstart">
+    <h2>3. Self-Hosted CLI Quickstart (Apache-2.0, Zero External Data Transmission)</h2>
+    <pre>git clone https://github.com/sanjaybasu/clindiff.git
+cd clindiff
+pip install -e .
+pytest
+
+# Compute exact finite-sample Minimum Verifiable Margin
+clindiff mvm --n 300 --alpha 0.05 --releases-per-year 4
+
+# Run Gates 0-2 locally and emit SHA-256 signed JSON + 1-page governance PDF
+clindiff evaluate \
+  --traces path/to/paired_traces.jsonl \
+  --manifest path/to/release_manifest.json \
+  --profile enterprise_governance \
+  --out-dir out/release_check</pre>
+  </section>
+
+  <footer>
+    Apache License 2.0 &middot; Code-only public resource (zero PHI, zero patient records) &middot;
+    Contact: sanjay.basu@ucsf.edu &middot;
+    Verification outputs support enterprise governance and do not constitute FDA clearance or legal advice.
+  </footer>
+</div>
+
+<script>
+// Exact 32-point Gauss-Chebyshev Jeffreys Beta(0.5, 0.5) mixture betting bound (matches clindiff.stats)
+const BET_K = 32;
+const BET_GRID = Array.from({ length: BET_K }, (_, k) => {
+  const s = Math.sin(Math.PI * (k + 0.5) / (2.0 * BET_K));
+  return Math.min(0.995, Math.max(0.002, s * s));
+});
+const LOG_W = -Math.log(BET_K);
+
+function logBettingEvalueBin(n, kOnes, m) {
+  if (m <= 0) return 0;
+  if (m >= 1 - 1e-12) return kOnes === n ? 0 : 100;
+  const nZeros = n - kOnes;
+  const denom = 1 - m;
+  let maxLw = -Infinity;
+  const lws = new Float64Array(BET_K);
+  for (let i = 0; i < BET_K; i++) {
+    const u = BET_GRID[i];
+    const f0 = 1 + u * (m / denom);
+    const f1 = 1 + u * ((m - 1) / denom);
+    const lw = nZeros * Math.log(f0) + kOnes * Math.log(f1) + LOG_W;
+    lws[i] = lw;
+    if (lw > maxLw) maxLw = lw;
+  }
+  let sumExp = 0;
+  for (let i = 0; i < BET_K; i++) sumExp += Math.exp(lws[i] - maxLw);
+  return maxLw + Math.log(sumExp);
+}
+
+function bettingUpperBoundBin(n, kOnes, alpha) {
+  const target = Math.log(1 / alpha);
+  const meanX = kOnes / n;
+  if (meanX >= 1 - 1e-12) return 1.0;
+  if (logBettingEvalueBin(n, kOnes, 1 - 1e-9) < target) return 1.0;
+  let lo = meanX, hi = 1 - 1e-9;
+  for (let iter = 0; iter < 55; iter++) {
+    const mid = 0.5 * (lo + hi);
+    if (logBettingEvalueBin(n, kOnes, mid) >= target) hi = mid;
+    else lo = mid;
+  }
+  return hi;
+}
+
+function binomPPF(q, n, p) {
+  if (p <= 0) return 0;
+  if (p >= 1) return n;
+  // Exact iterative log-PMF accumulation from mode or 0 (stable up to N=50,000)
+  let logP = n * Math.log(1 - p);
+  let cdf = Math.exp(logP);
+  if (cdf >= q) return 0;
+  const logRatio = Math.log(p / (1 - p));
+  for (let k = 1; k <= n; k++) {
+    logP += Math.log(n - k + 1) - Math.log(k) + logRatio;
+    cdf += Math.exp(logP);
+    if (cdf >= q) return k;
+  }
+  return n;
+}
+
+function exactMvm(n, alpha, pBg) {
+  const zeroFloor = bettingUpperBoundBin(n, 0, alpha);
+  const kStar = binomPPF(0.80, n, pBg);
+  const ceil = bettingUpperBoundBin(n, kStar, alpha);
+  const margin = Math.max(0, ceil - pBg);
+  return { zeroFloor, ceil, margin, kStar };
+}
+
+function minNForZeroFloor(targetCap, alpha) {
+  let lo = 1, hi = 50000;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (bettingUpperBoundBin(mid, 0, alpha) <= targetCap) hi = mid;
+    else lo = mid + 1;
+  }
+  return lo;
+}
+
+function updateCalc() {
+  const n = Math.max(10, Math.min(50000, parseInt(document.getElementById("nCases").value, 10) || 80));
+  const cad = parseInt(document.getElementById("cadence").value, 10) || 1;
+  const pBg = Math.max(0, Math.min(0.2, (parseFloat(document.getElementById("bgRate").value) || 0) / 100));
+  const cap = Math.max(0.001, Math.min(0.5, (parseFloat(document.getElementById("targetCap").value) || 2.5) / 100));
+  const alpha = 0.05 / cad;
+
+  const r = exactMvm(n, alpha, pBg);
+  const minN = minNForZeroFloor(cap, alpha);
+
+  document.getElementById("outZero").textContent = (r.zeroFloor * 100).toFixed(2) + " pp";
+  document.getElementById("outMvm").textContent = (r.margin * 100).toFixed(2) + " pp";
+  document.getElementById("outCeil").textContent = (r.ceil * 100).toFixed(2) + "%";
+  document.getElementById("outMinN").textContent = "N >= " + minN.toLocaleString();
+
+  const notice = document.getElementById("powerNotice");
+  if (r.zeroFloor > cap) {
+    notice.innerHTML =
+      "<strong>UNDERPOWERED FOR TARGET CAP:</strong> Even with <strong>0 downward flips in " + n.toLocaleString() +
+      " independent scenarios</strong>, the exact zero-error betting floor (" + (r.zeroFloor * 100).toFixed(2) +
+      "%) exceeds your " + (cap * 100).toFixed(1) + "% contract cap. You need at least <strong>N = " +
+      minN.toLocaleString() + " independent scenarios</strong> to certify " + (cap * 100).toFixed(1) + "% at zero flips.";
+  } else {
+    notice.innerHTML =
+      "<strong>FEASIBLE AT ZERO FLIPS:</strong> At N = " + n.toLocaleString() +
+      ", a zero-regression candidate achieves an exact upper bound of " + (r.zeroFloor * 100).toFixed(2) +
+      "% (&le; " + (cap * 100).toFixed(1) + "% cap). Under a " + (pBg * 100).toFixed(1) +
+      "% background flip rate (80th percentile k* = " + r.kStar + " flips), the exact certifiable ceiling is " +
+      (r.ceil * 100).toFixed(2) + "%.";
+  }
+}
+
+function buildRefTable() {
+  const ns = [30, 50, 80, 150, 200, 300, 500, 949, 2500, 10000];
+  const tbody = document.getElementById("refTableBody");
+  tbody.innerHTML = "";
+  for (const n of ns) {
+    const r1 = exactMvm(n, 0.05, 0.01);
+    const r4 = exactMvm(n, 0.05 / 4, 0.01);
+    const r12 = exactMvm(n, 0.05 / 12, 0.01);
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      "<td>" + n.toLocaleString() + "</td>" +
+      "<td>" + (r1.zeroFloor * 100).toFixed(2) + "</td>" +
+      "<td>" + (r1.margin * 100).toFixed(2) + "</td>" +
+      "<td>" + (r4.margin * 100).toFixed(2) + "</td>" +
+      "<td>" + (r12.margin * 100).toFixed(2) + "</td>";
+    tbody.appendChild(tr);
+  }
+}
+
+function copyClause() {
+  const txt = document.getElementById("clauseText").textContent;
+  navigator.clipboard.writeText(txt).then(() => {
+    document.getElementById("copyStatus").textContent = "Copied to clipboard.";
+    setTimeout(() => { document.getElementById("copyStatus").textContent = ""; }, 2500);
+  });
+}
+
+["nCases", "cadence", "bgRate", "targetCap"].forEach(id =>
+  document.getElementById(id).addEventListener("input", updateCalc)
+);
+buildRefTable();
+updateCalc();
+</script>
+</body>
+</html>

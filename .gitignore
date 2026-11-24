@@ -1,0 +1,21 @@
+# Local data, study results, raw traces, PHI, and build artifacts
+# Code-only public repository: never commit patient data or run results
+data/
+data_local/
+raw_traces/
+results/
+out/
+*.csv
+*.xlsx
+*.parquet
+*.pdf
+*.png
+.DS_Store
+.pytest_cache/
+__pycache__/
+*.egg-info/
+dist/
+build/
+.env
+*.pem
+*.key
