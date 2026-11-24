@@ -36,6 +36,7 @@ if str(PKG_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(PKG_ROOT / "src"))
 from clindiff.gates import evaluate_release
 from clindiff.guardrails import apply_deterministic_gate0_floor
+from clindiff.stats import _bounded_two_sided_cs
 
 NB_ROOT = Path(os.environ.get("CLINDIFF_NOTEBOOKS_ROOT", str(PKG_ROOT.parent.parent / "notebooks/clinical-ai-change-control")))
 CLIN_DIR = NB_ROOT / "audit/clinician_validation"
@@ -386,6 +387,61 @@ def main() -> int:
             "decision_harmonized_c81": rep["decision"],
         })
 
+    # Live prospective Gate 2 signed calibration audit (n=90 3-MD ratings) before & after harmonization
+    err_pre = auto_comb_all.astype(float) - md_ti_all.astype(float)
+    lo_pre, hi_pre = _bounded_two_sided_cs(err_pre, -1.0, 1.0, alpha=0.05)
+    err_post = auto_comb_harm.astype(float) - md_ti_all.astype(float)
+    lo_post, hi_post = _bounded_two_sided_cs(err_post, -1.0, 1.0, alpha=0.05)
+    prospective_gate2_cal = {
+        "pre_harmonized_signed_bias_pp": round(float(np.mean(err_pre)) * 100.0, 1),
+        "pre_harmonized_betting_cs95_pp": [round(lo_pre * 100.0, 1), round(hi_pre * 100.0, 1)],
+        "pre_harmonized_alert_fired": bool(lo_pre > 0.0 or hi_pre < 0.0),
+        "post_harmonized_signed_bias_pp": round(float(np.mean(err_post)) * 100.0, 1),
+        "post_harmonized_betting_cs95_pp": [round(lo_post * 100.0, 1), round(hi_post * 100.0, 1)],
+        "post_harmonized_alert_fired": bool(lo_post > 0.0 or hi_post < 0.0),
+    }
+
+    # Exact paired within-scenario Spanish-vs-English downward-flip bootstrap CI & sign-flip permutation test
+    rng_es = np.random.default_rng(20261124)
+    def _paired_es_en(a0: str, a1: str, harmonized: bool = False) -> dict[str, Any]:
+        by_en, by_es = {}, {}
+        for vid in sorted(arms_all[a0]):
+            meta = arms_all[a0][vid][0]
+            is_sp = True if (harmonized and meta["base_id"] in md_harmonize_bases) else bool(meta["is_safety_positive"])
+            if not is_sp:
+                continue
+            fn = _score_harm if harmonized else sc.score_single_row
+            s0 = float(np.mean([fn(r)[1] for r in arms_all[a0][vid]]))
+            s1 = float(np.mean([fn(r)[1] for r in arms_all[a1][vid]]))
+            psi = s0 * (1.0 - s1)
+            if meta["stratum"] == "en_standard":
+                by_en[meta["base_id"]] = psi
+            elif meta["stratum"] == "es_spanish":
+                by_es[meta["base_id"]] = psi
+        bases = sorted(set(by_en) & set(by_es))
+        diff = np.array([by_es[b] - by_en[b] for b in bases], dtype=float)
+        mean_d = float(np.mean(diff))
+        idx = rng_es.integers(0, len(diff), size=(10000, len(diff)))
+        boot = np.mean(diff[idx], axis=1)
+        signs = rng_es.choice([-1.0, 1.0], size=(10000, len(diff)))
+        perm_m = np.mean(signs * diff[None, :], axis=1)
+        p_two = float((1 + np.sum(np.abs(perm_m) >= abs(mean_d) - 1e-12)) / 10001)
+        return {
+            "n_clusters": len(bases),
+            "diff_es_minus_en_pp": round(mean_d * 100.0, 1),
+            "boot_ci95_pp": [round(float(np.quantile(boot, 0.025)) * 100.0, 1), round(float(np.quantile(boot, 0.975)) * 100.0, 1)],
+            "perm_p_two_sided": round(p_two, 4),
+        }
+
+    paired_es_vs_en = {
+        "gemma3_to_medgemma_primary": _paired_es_en("gemma3_27b_baseline", "medgemma_27b_baseline", False),
+        "gemma3_to_medgemma_harmonized": _paired_es_en("gemma3_27b_baseline", "medgemma_27b_baseline", True),
+        "medgemma_nav_primary": _paired_es_en("medgemma_27b_baseline", "medgemma_27b_nav_format", False),
+        "sonnet46_to_55_primary": _paired_es_en("claude_sonnet46_baseline", "claude_sonnet55_baseline", False),
+        "gpt54_to_62_primary": _paired_es_en("gpt54_baseline", "gpt62_sol_baseline", False),
+        "opus48_to_55_primary": _paired_es_en("claude_opus48_baseline", "claude_opus55_baseline", False),
+    }
+
     out = {
         "n_rater_files": len(files),
         "files": [p.name for p in files],
@@ -395,6 +451,8 @@ def main() -> int:
         "Combined_Gate0_And_Gate1_vs_MD_Hard_Safety_90": comb_vs_md_hard,
         "Combined_Gate0_And_Gate1_vs_MD_Tiered_90": comb_vs_md_tiered,
         "MD_Harmonized_Combined_vs_MD_Tiered_90": harmonized_vs_md_tiered,
+        "Prospective_Gate2_Calibration_90": prospective_gate2_cal,
+        "Paired_Spanish_vs_English_Tests": paired_es_vs_en,
         "MD_Harmonized_Prospective_Sensitivity": sens_pairs,
         "Spanish_Parity_30": parity_res,
         "discordant_cases_combined": comb_disc,
